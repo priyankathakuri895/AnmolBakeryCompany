@@ -1,25 +1,66 @@
 <header class="site-header">
     <div class="container nav-wrapper">
 
-        <a href="/" class="brand">
+        <!-- Brand -->
+        <a href="{{ route('home') }}" class="brand">
             <span class="brand-main">ANMOL</span>
             <span class="brand-sub">BAKERY</span>
         </a>
 
-        <nav class="desktop-nav">
-            <a href="/" class="nav-link">Home</a>
-            <a href="/about" class="nav-link">About</a>
-            <a href="/products" class="nav-link">Products</a>
-            <a href="/quality" class="nav-link">Quality</a>
-            <a href="/gallery" class="nav-link">Gallery</a>
-            <a href="/contact" class="nav-link">Contact</a>
+
+        <!-- Desktop Navigation -->
+        <nav class="main-nav">
+
+            <a
+                href="{{ route('home') }}"
+                class="nav-link {{ request()->routeIs('home') ? 'active' : '' }}"
+            >
+                Home
+            </a>
+
+            <a
+                href="{{ route('about') }}"
+                class="nav-link {{ request()->routeIs('about') ? 'active' : '' }}"
+            >
+                About
+            </a>
+
+            <a
+                href="{{ route('products') }}"
+                class="nav-link {{ request()->routeIs('products') ? 'active' : '' }}"
+            >
+                Products
+            </a>
+
+            <a
+                href="{{ route('gallery') }}"
+                class="nav-link {{ request()->routeIs('gallery') ? 'active' : '' }}"
+            >
+                Gallery
+            </a>
+
+            <a
+                href="{{ route('contact') }}"
+                class="nav-link {{ request()->routeIs('contact') ? 'active' : '' }}"
+            >
+                Contact
+            </a>
+
         </nav>
 
+
+        <!-- WhatsApp -->
         <a href="#" class="btn btn-primary nav-button">
             WhatsApp Us
         </a>
 
-        <button class="mobile-menu-button" type="button" aria-label="Open menu">
+
+        <!-- Mobile Menu -->
+        <button
+            class="mobile-menu-button"
+            type="button"
+            aria-label="Open menu"
+        >
             ☰
         </button>
 
