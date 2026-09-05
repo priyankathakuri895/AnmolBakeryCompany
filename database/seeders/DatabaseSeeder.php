@@ -17,6 +17,9 @@ class DatabaseSeeder extends Seeder
         $this->call([
             OwnerSeeder::class,
             RawMaterialSeeder::class,
+            ProductSeeder::class,
+            SalesmanSeeder::class,
+            VanSeeder::class,
         ]);
     }
 }

@@ -1,6 +1,13 @@
 # Anmol — Raw Material Workflow Specification
 
 Status: agreed baseline. Business logic is frozen; the database schema below implements it.
+**Receiving (module 4) and Pending Receipts (module 5) are now built** — `MaterialReceiptController`
+(`app/Http/Controllers/Admin/MaterialReceiptController.php`), covering sections 1–9 below,
+plus a bill photo upload (`material_receipts.bill_image_path`, stored on the `public` disk).
+One simplification: follow-up deliveries always use `link_type = pending_fulfilment`; a
+dedicated `damage_replacement` flow was not built (the enum case exists but is unused) since
+it's a rarer case and the pending-fulfilment flow already covers "the rest of what's owed."
+Raw Material Stock (module 6) and Stock Checking (module 7) — sections 10–11 — remain unbuilt.
 
 ---
 

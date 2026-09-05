@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\MaterialReceiptItem;
 use App\Models\Supplier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -36,6 +37,42 @@ class SupplierController extends Controller
     public function create(): View
     {
         return view('admin.suppliers.create', ['supplier' => new Supplier]);
+    }
+
+    public function show(Supplier $supplier): View
+    {
+        $supplier->load(['vehicles' => fn ($q) => $q->orderBy('vehicle_number')]);
+
+        $receipts = $supplier->receipts()
+            ->withCount('items')
+            ->orderByDesc('received_date')
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get();
+
+        $materialSummary = MaterialReceiptItem::query()
+            ->whereHas('receipt', fn ($q) => $q->where('supplier_id', $supplier->id))
+            ->with(['rawMaterial', 'receipt'])
+            ->get()
+            ->groupBy('raw_material_id')
+            ->map(fn ($group) => [
+                'material' => $group->first()->rawMaterial,
+                'bill_qty' => $group->sum(fn ($i) => (float) $i->bill_qty),
+                'received_qty' => $group->sum(fn ($i) => (float) $i->received_qty),
+                'damaged_qty' => $group->sum(fn ($i) => (float) $i->damaged_qty),
+                'accepted_qty' => $group->sum(fn ($i) => (float) $i->accepted_qty),
+                'pending_qty' => $group->sum(fn ($i) => (float) $i->pending_qty),
+                'last_delivery' => $group->max(fn ($i) => $i->receipt->received_date),
+            ])
+            ->sortBy(fn ($row) => $row['material']->name)
+            ->values();
+
+        return view('admin.suppliers.show', [
+            'supplier' => $supplier,
+            'receipts' => $receipts,
+            'receiptCount' => $supplier->receipts()->count(),
+            'materialSummary' => $materialSummary,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse

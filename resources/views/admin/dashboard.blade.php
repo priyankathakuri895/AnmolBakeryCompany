@@ -38,6 +38,30 @@
             <p class="meta">material still owed by suppliers</p>
         </div>
 
+        <div class="stat">
+            <p class="label">Products</p>
+            <p class="value">{{ $productCount }}</p>
+            <p class="meta">{{ $activeProductCount }} active</p>
+        </div>
+
+        <div class="stat">
+            <p class="label">Vans</p>
+            <p class="value">{{ $vanCount }}</p>
+            <p class="meta">{{ $activeVanCount }} active, {{ $salesmanCount }} salesmen</p>
+        </div>
+
+        <div class="stat {{ $lowStockProductCount > 0 ? 'warn' : '' }}">
+            <p class="label">Low Stock Products</p>
+            <p class="value">{{ $lowStockProductCount }}</p>
+            <p class="meta">at or below reorder level</p>
+        </div>
+
+        <div class="stat {{ $openStockCheckCount > 0 ? 'warn' : '' }}">
+            <p class="label">Open Stock Checks</p>
+            <p class="value">{{ $openStockCheckCount }}</p>
+            <p class="meta">draft, not yet finalized</p>
+        </div>
+
     </div>
 
     <div class="card">
@@ -152,6 +176,111 @@
                                     <p>No suppliers yet.</p>
                                     <p style="margin-top:12px">
                                         <a href="{{ route('admin.suppliers.create') }}" class="btn btn-primary btn-sm">Add a supplier</a>
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Finished Product Stock</h2>
+            <a href="{{ route('admin.products.index') }}" class="btn btn-outline btn-sm">Manage products</a>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th class="num">Price</th>
+                        <th class="num">Current Stock</th>
+                        <th class="num">Reorder Level</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($products as $product)
+                        <tr>
+                            <td class="primary-cell">{{ $product->name }}</td>
+                            <td class="num sub-cell">Rs. {{ number_format($product->price, 2) }}</td>
+                            <td class="num">
+                                {{ rtrim(rtrim(number_format($product->current_stock, 3, '.', ''), '0'), '.') }}
+                                <span class="sub-cell">{{ $product->unit_label }}</span>
+                            </td>
+                            <td class="num sub-cell">
+                                {{ $product->reorder_level === null
+                                    ? '—'
+                                    : rtrim(rtrim(number_format($product->reorder_level, 3, '.', ''), '0'), '.') }}
+                            </td>
+                            <td>
+                                @if ($product->isBelowReorderLevel())
+                                    <span class="badge amber">Low stock</span>
+                                @else
+                                    <span class="badge green">OK</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5">
+                                <div class="empty-state">
+                                    <p class="big">◆</p>
+                                    <p>No products yet.</p>
+                                    <p style="margin-top:12px">
+                                        <a href="{{ route('admin.products.create') }}" class="btn btn-primary btn-sm">Add a product</a>
+                                    </p>
+                                </div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h2>Vans &amp; their salesmen</h2>
+            <a href="{{ route('admin.vans.index') }}" class="btn btn-outline btn-sm">Manage vans</a>
+        </div>
+
+        <div class="table-wrap">
+            <table class="data">
+                <thead>
+                    <tr>
+                        <th>Van</th>
+                        <th>Registration</th>
+                        <th>Default salesman</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($vans as $van)
+                        <tr>
+                            <td class="primary-cell">{{ $van->name }}</td>
+                            <td class="sub-cell">{{ $van->registration_number ?: '—' }}</td>
+                            <td class="sub-cell">{{ $van->defaultSalesman?->name ?: '—' }}</td>
+                            <td>
+                                @if ($van->is_active)
+                                    <span class="badge green">Active</span>
+                                @else
+                                    <span class="badge gray">Inactive</span>
+                                @endif
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4">
+                                <div class="empty-state">
+                                    <p class="big">▤</p>
+                                    <p>No vans yet.</p>
+                                    <p style="margin-top:12px">
+                                        <a href="{{ route('admin.vans.create') }}" class="btn btn-primary btn-sm">Add a van</a>
                                     </p>
                                 </div>
                             </td>

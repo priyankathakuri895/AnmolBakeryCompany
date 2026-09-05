@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class MaterialReceipt extends Model
 {
@@ -16,7 +17,8 @@ class MaterialReceipt extends Model
 
     protected $fillable = [
         'receipt_no', 'supplier_id', 'supplier_vehicle_id', 'driver_name',
-        'received_date', 'bill_number', 'bill_date', 'bill_stacked', 'bill_stacked_at',
+        'received_date', 'bill_number', 'bill_date', 'bill_image_path',
+        'bill_extraction', 'bill_read_at', 'bill_stacked', 'bill_stacked_at',
         'receipt_type', 'parent_receipt_id', 'status', 'notes', 'received_by',
     ];
 
@@ -25,6 +27,8 @@ class MaterialReceipt extends Model
         return [
             'received_date' => 'date',
             'bill_date' => 'date',
+            'bill_extraction' => 'array',
+            'bill_read_at' => 'datetime',
             'bill_stacked' => 'boolean',
             'bill_stacked_at' => 'datetime',
             'receipt_type' => ReceiptType::class,
@@ -69,7 +73,12 @@ class MaterialReceipt extends Model
         return $this->status === ReceiptStatus::Pending;
     }
 
-    /** Pending when any line still owes quantity. */
+    public function isFollowUp(): bool
+    {
+        return $this->receipt_type === ReceiptType::FollowUp;
+    }
+
+    /** Pending while any line still owes quantity. */
     public function resolveStatus(): ReceiptStatus
     {
         if ($this->status === ReceiptStatus::Cancelled) {
@@ -79,6 +88,49 @@ class MaterialReceipt extends Model
         return $this->items->sum(fn ($item) => (float) $item->pending_qty) > 0
             ? ReceiptStatus::Pending
             : ReceiptStatus::Complete;
+    }
+
+    /** Recalculate every line, then the receipt's own status, and save. */
+    public function refreshStatus(): static
+    {
+        $this->load('items');
+
+        $this->items->each(function (MaterialReceiptItem $item) {
+            $item->recalculate();
+
+            if ($item->isDirty()) {
+                $item->save();
+            }
+        });
+
+        $status = $this->resolveStatus();
+
+        if ($this->status !== $status) {
+            $this->forceFill(['status' => $status])->save();
+        }
+
+        return $this;
+    }
+
+    public function billImageUrl(): ?string
+    {
+        return $this->bill_image_path
+            ? Storage::disk('public')->url($this->bill_image_path)
+            : null;
+    }
+
+    /** Next receipt number, e.g. RCV-2026-0007. */
+    public static function nextReceiptNo(): string
+    {
+        $year = now()->format('Y');
+        $count = static::whereYear('created_at', $year)->count() + 1;
+
+        do {
+            $candidate = sprintf('RCV-%s-%04d', $year, $count);
+            $count++;
+        } while (static::where('receipt_no', $candidate)->exists());
+
+        return $candidate;
     }
 
     public function scopePending(Builder $query): Builder

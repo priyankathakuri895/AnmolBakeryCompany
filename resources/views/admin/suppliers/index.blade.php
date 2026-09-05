@@ -61,7 +61,7 @@
                                 @endif
                             </td>
                             <td class="actions">
-                                <a href="{{ route('admin.vehicles.index', ['supplier' => $supplier->id]) }}" class="btn btn-outline btn-sm">Vehicles</a>
+                                <a href="{{ route('admin.suppliers.show', $supplier) }}" class="btn btn-outline btn-sm">Details</a>
                                 <a href="{{ route('admin.suppliers.edit', $supplier) }}" class="btn btn-outline btn-sm">Edit</a>
                                 <form method="POST"
                                       action="{{ route('admin.suppliers.destroy', $supplier) }}"
