@@ -1,59 +1,119 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Anmol — Raw Material Inventory System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A raw-material inventory system for a bakery, built with Laravel 12. It is built around the part most stock software gets wrong: **what arrives is not always what was ordered.**
 
-## About Laravel
+The public site (home, about, products, gallery, contact) sits in front of an owner-only admin area where suppliers, deliveries and stock are managed.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+**Stack:** Laravel 12 · PHP 8.2+ · Blade · SQLite
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## The problem it solves
 
-## Learning Laravel
+A bakery receives flour, sugar, ghee and the rest from wholesalers. The supplier vehicle arrives with a bill. Three things can be true at once:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+- Some of what is on the bill **arrived and is fine** — the accepted quantity
+- Some **did not arrive at all** — short, and it has to be chased
+- Some **arrived damaged** — it is here, but it is not usable stock
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Most systems collapse all three into one number. Then at month end nobody can prove what the supplier actually owed, and the argument is decided by whoever remembers it better.
 
-## Laravel Sponsors
+This system keeps all three separate and never merges them.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## How receiving works
 
-### Premium Partners
+```
+Supplier bill arrives with the delivery
+        |
+   Check line by line
+        |
+        +-- Accepted  --> enters stock
+        +-- Damaged   --> recorded, does NOT enter stock
+        +-- Pending   --> short quantity, chased with supplier
+                             |
+                    Later delivery links back to
+                    the original receiving record
+        |
+   Bill filed - recorded as "bill stacked" on the receipt
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+Only **accepted quantity (received minus damaged)** ever enters stock. A later delivery that makes up a shortfall links back to the receiving record it came from, so the chain from original bill to final settlement stays intact.
 
-## Contributing
+## How stock is calculated
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Stock is never edited directly. Every movement is a transaction, and the current figure is always derivable:
 
-## Code of Conduct
+```
+current stock = opening + accepted received - used +/- adjustments
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+When someone counts the shelves and the physical figure disagrees with the system, that **creates an adjustment record** — it does not overwrite the number. The discrepancy stays visible, with a date and a reason attached. An inventory you can silently correct is an inventory nobody can audit.
 
-## Security Vulnerabilities
+## The seven modules
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+| # | Module | What it holds |
+|---|---|---|
+| 1 | Suppliers | Wholesalers the bakery buys from |
+| 2 | Supplier Vehicles | Delivery vehicles — these belong to the supplier, not the bakery |
+| 3 | Raw Materials | The materials themselves, with packaging and unit size |
+| 4 | Raw Material Receiving | Deliveries checked against the supplier bill |
+| 5 | Pending Receipts | Short quantities awaiting settlement |
+| 6 | Raw Material Stock | Current stock with full transaction history |
+| 7 | Stock Checking | Physical counts, producing adjustment records |
 
-## License
+## Materials and packaging
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Quantities are entered in the units the bakery actually receives — packets and drums — with `unit_size` stored on the material, so the base weight or volume is computed rather than converted by hand at the counter.
+
+| Material | Packaging |
+|---|---|
+| Flour | 50 kg packet |
+| Sugar | 50 kg packet |
+| Yeast | 500 g packet |
+| Calcium | 1 kg packet |
+| Butter | 500 g packet |
+| Oil | 20 L drum |
+| Puff Ghee | 25 kg packet |
+| Cream Ghee | 25 kg packet |
+
+Nobody receiving a delivery wants to do arithmetic. They count packets; the system handles kilograms.
+
+## Running it locally
+
+Requires PHP 8.2+ and Composer. SQLite means no database server to set up.
+
+```bash
+git clone https://github.com/priyankathakuri895/AnmolBakeryCompany.git
+cd AnmolBakeryCompany
+
+composer install
+
+cp .env.example .env
+php artisan key:generate
+
+touch database/database.sqlite
+php artisan migrate --seed
+php artisan serve
+```
+
+Open http://127.0.0.1:8000 for the public site, and `/admin` for the owner dashboard.
+
+## Design notes
+
+**SQLite, deliberately.** One bakery, one machine, one person entering deliveries. A database server would be infrastructure to maintain for no benefit, and the whole dataset backs up by copying one file.
+
+**Pending and damaged are separate columns, not a status.** They mean genuinely different things — one is the supplier debt, the other is a loss already taken — and combining them would make both unusable.
+
+**The receiving workflow is a frozen specification.** It was worked out against how the business actually operates before any code was written. Getting the domain model right first is why the rest stayed simple. See `docs/raw-material-workflow.md` and `docs/sales-distribution-workflow.md`.
+
+## Roadmap
+
+- [ ] Photo upload of the supplier bill, read automatically to pre-fill the receiving form
+- [ ] Van loading records
+- [ ] Profit and loss reporting
+- [ ] Supplier settlement statements from the pending-receipt history
+
+---
+
+Built by **Priyanka Thakuri** — Bharatpur, Chitwan, Nepal  
+[GitHub](https://github.com/priyankathakuri895) · [LinkedIn](https://www.linkedin.com/in/priyanka-thakuri-771127433/) · priyankathakuri895@gmail.com
